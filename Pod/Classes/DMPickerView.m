@@ -115,10 +115,17 @@
             label.frame = CGRectMake(currentX, y, width, height);
             currentX += CGRectGetWidth(label.frame) + self.spacing;
         } else {
+            /* QUICK FIX FOR LABEL FRAME HEIGHT */
+            CGSize constraintSize = CGSizeMake(self.bounds.size.width, MAXFLOAT);
+            CGRect rect = [label.text boundingRectWithSize:constraintSize
+                                                   options:NSStringDrawingUsesLineFragmentOrigin
+                                                attributes:@{NSFontAttributeName : label.font}
+                                                   context:nil];
+            
             label.frame = CGRectMake(CGRectGetMidX(self.bounds) - CGRectGetWidth(label.frame) / 2,
                                      currentY,
                                      CGRectGetWidth(label.frame),
-                                     CGRectGetHeight(label.frame));
+                                     rect.size.height);
             currentY += CGRectGetHeight(label.frame) + self.spacing;
         }
     }
