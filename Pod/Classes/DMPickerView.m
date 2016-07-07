@@ -200,9 +200,9 @@
         label.tag = i;
         [label sizeToFit];
         // Gesture recognizer
-        UITapGestureRecognizer *tapGestureRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(didTapLabel:)];
-        [label addGestureRecognizer:tapGestureRecognizer];
-        label.userInteractionEnabled = YES;
+        //UITapGestureRecognizer *tapGestureRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(didTapLabel:)];
+        //[label addGestureRecognizer:tapGestureRecognizer];
+        //label.userInteractionEnabled = YES;
         // Add subview
         [self.scrollview addSubview:label];
         // Add label to property array
