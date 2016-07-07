@@ -370,8 +370,16 @@
             label.transform = CGAffineTransformScale(CGAffineTransformIdentity, sizeScale, sizeScale);
             
             // Change alpha according to distance
-            CGFloat alphaScale = MAX(1 - self.alphaScaleRatio * distanceFromMiddle/CGRectGetHeight(self.scrollview.bounds), self.minAlphaScale);
-            label.alpha = self.shouldSelect ? alphaScale : self.minAlphaScale;
+            //CGFloat alphaScale = MAX(1 - self.alphaScaleRatio * distanceFromMiddle/CGRectGetHeight(self.scrollview.bounds), self.minAlphaScale);
+            //label.alpha = self.shouldSelect ? alphaScale : self.minAlphaScale;
+            
+            CGFloat alphaScale;
+            if ((distanceFromMiddle) > (CGRectGetHeight(self.scrollview.bounds) / 2)) {
+                alphaScale = 0.0;
+            } else {
+                alphaScale = 1 - ((distanceFromMiddle)/((CGRectGetHeight(self.scrollview.bounds) / 2) - 10.0));
+            }
+            label.alpha = alphaScale;
         }
     }
 }
