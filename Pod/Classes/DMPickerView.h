@@ -115,5 +115,6 @@ typedef enum {
  @param userTriggered The selection is triggered by the user
  */
 - (void)pickerView:(DMPickerView *)pickerView didSelectLabelAtIndex:(NSUInteger)index userTriggered:(BOOL)userTriggered;
+- (void)didTapPicker:(DMPickerView *)pickerView;
 
 @end
