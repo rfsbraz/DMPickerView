@@ -7,6 +7,7 @@
 //
 
 #import "DMPickerView.h"
+#import <AudioToolbox/AudioToolbox.h>
 
 #define kDefaultSpacing 30
 #define kDefaultMinSizeScale 0.2
@@ -26,7 +27,9 @@
 
 @end
 
-@implementation DMPickerView
+@implementation DMPickerView {
+    NSInteger previousIndex;
+}
 
 #pragma mark - Init
 
@@ -51,6 +54,8 @@
     self.alphaScaleRatio = kDefaultAlphaScaleRatio;
     self.shouldUpdateRenderingOnlyWhenSelected = NO;
     self.shouldSelect = YES;
+    
+    previousIndex = -1;
 }
 
 - (id)init
@@ -171,7 +176,7 @@
     
     // Reinit array
     self.labels = [NSMutableArray array];
-
+    
     // Get texts from datasource
     NSUInteger n = [self.datasource numberOfLabelsForPickerView:self];
     NSMutableArray *texts = [NSMutableArray array];
@@ -234,8 +239,9 @@
     // Notify delegate
     if (self.delegate && [self.delegate respondsToSelector:@selector(pickerView:didSelectLabelAtIndex:userTriggered:)]) {
         [self.delegate pickerView:self didSelectLabelAtIndex:self.index userTriggered:YES];
+        AudioServicesPlaySystemSound(1105);
     }
-
+    
     // Update views if the option was selected
     if (self.shouldUpdateRenderingOnlyWhenSelected) {
         [self updateViews];
@@ -292,10 +298,10 @@
         CGPoint newContentOffset = CGPointMake(CGRectGetMinX(self.bounds), self.scrollview.contentOffset.y + minDistance);
         [self.scrollview setContentOffset:newContentOffset animated:YES];
     }
-
+    
     // Update index
     self.index = index;
-
+    
 }
 
 #pragma mark - Tap label
@@ -323,7 +329,7 @@
             [self.scrollview setContentOffset:newContentOffset animated:animated];
         }
     }
-
+    
     // Notify delegate
     self.index = index;
     if (self.delegate && [self.delegate respondsToSelector:@selector(pickerView:didSelectLabelAtIndex:userTriggered:)]) {
@@ -338,7 +344,7 @@
  */
 - (void)updateViews {
     CGPoint position = self.scrollview.contentOffset;
-
+    
     if (self.orientation == HORIZONTAL) {
         // Compute the offset of the middle of the visible scroller
         CGFloat middlePosition = position.x + CGRectGetWidth(self.scrollview.bounds) / 2;
@@ -382,8 +388,46 @@
             label.alpha = alphaScale;
         }
     }
+    
+    NSInteger currentIndex = [self findMiddleIndex];
+    if (currentIndex != previousIndex) {
+        AudioServicesPlaySystemSound(1105);
+        previousIndex = currentIndex;
+    }
 }
 
-
+- (NSInteger)findMiddleIndex {
+    CGPoint position = self.scrollview.contentOffset;
+    // Compute the offset of the middle of the visible scroller
+    CGFloat middlePosition;
+    if (self.orientation == HORIZONTAL) {
+        middlePosition = position.x + CGRectGetWidth(self.scrollview.bounds) / 2;
+    } else {
+        middlePosition = position.y + CGRectGetHeight(self.scrollview.bounds) / 2;
+    }
+    
+    // Find nearest label
+    CGFloat minDistance = MAX(self.scrollview.contentSize.width, self.scrollview.contentSize.height);
+    NSUInteger index = -1;
+    for (int i = 0 ; i < [self.labels count] ; i++) {
+        UILabel *label = self.labels[i];
+        // Calculate distance from middle
+        CGFloat distanceFromMiddle;
+        if (self.orientation == HORIZONTAL) {
+            distanceFromMiddle = CGRectGetMidX(label.frame) - middlePosition;
+            if (ABS(distanceFromMiddle) < ABS(minDistance)) {
+                minDistance = distanceFromMiddle;
+                index = i;
+            }
+        } else {
+            distanceFromMiddle = CGRectGetMidY(label.frame) - middlePosition;
+            if (ABS(distanceFromMiddle) < ABS(minDistance)) {
+                minDistance = distanceFromMiddle;
+                index = i;
+            }
+        }
+    }
+    return index;
+}
 
 @end
