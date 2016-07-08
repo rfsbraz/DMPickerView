@@ -205,9 +205,9 @@
         label.tag = i;
         [label sizeToFit];
         // Gesture recognizer
-        //UITapGestureRecognizer *tapGestureRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(didTapLabel:)];
-        //[label addGestureRecognizer:tapGestureRecognizer];
-        //label.userInteractionEnabled = YES;
+        UITapGestureRecognizer *tapGestureRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(didTapLabel:)];
+        [label addGestureRecognizer:tapGestureRecognizer];
+        label.userInteractionEnabled = YES;
         // Add subview
         [self.scrollview addSubview:label];
         // Add label to property array
@@ -307,8 +307,12 @@
 #pragma mark - Tap label
 
 - (void)didTapLabel:(UITapGestureRecognizer *)recognizer {
-    NSUInteger index = recognizer.view.tag;
-    [self moveToIndex:index animated:YES];
+    //NSUInteger index = recognizer.view.tag;
+    //[self moveToIndex:index animated:YES];
+    
+    if (self.delegate && [self.delegate respondsToSelector:@selector(didTapPicker:)]) {
+        [self.delegate didTapPicker:self];
+    }
 }
 
 #pragma mark - Move to index
