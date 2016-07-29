@@ -1,110 +1,350 @@
 //
-//  SkyHourWheelView.swift
-//  SkyHour
+//  DMPickerView.m
+//  Dreem
 //
-//  Created by Elisabete Sousa on 04/07/16.
-//  Copyright © 2016 SkyHour. All rights reserved.
+//  Created by Olivier Tranzer on 17/10/15.
+//  Copyright © 2015 Adrien. All rights reserved.
 //
 
-import Foundation
-import UIKit
-import DMPickerView
+#import "DMPickerView.h"
+#import <AudioToolbox/AudioToolbox.h>
 
-protocol SkyHourWheelDelegate : NSObjectProtocol {
-    
-    /**
-     Selected a label.
-     @param value the selected value
-     */
-    func didSelectValue(value: UInt)
+#define kDefaultSpacing 30
+#define kDefaultMinSizeScale 0.2
+#define kDefaultSizeScaleRatio 1
+#define kDefaultMinAlphaScale 0.2
+#define kDefaultAlphaScaleRatio 1
+#define kDefaultMinSizeScale 0.2
+
+@interface DMPickerView()
+
+// Views
+@property (nonatomic, strong) UIScrollView *scrollview;
+@property (nonatomic, strong) NSMutableArray *labels;
+
+// Data
+@property (nonatomic) NSUInteger index;
+
+@end
+
+@implementation DMPickerView {
+    NSInteger previousIndex;
 }
 
-public enum PickerScrollOrientation : Int {
-    case OrientationUp
-    case OrientationDown
+#pragma mark - Init
+
+- (void)initialize {
+    self.backgroundColor = [UIColor clearColor];
+    
+    // Scrollview
+    self.scrollview = [UIScrollView new];
+    self.scrollview.delegate = self;
+    self.scrollview.backgroundColor = [UIColor clearColor];
+    self.scrollview.showsHorizontalScrollIndicator = NO;
+    self.scrollview.showsVerticalScrollIndicator = NO;
+    self.scrollview.decelerationRate = UIScrollViewDecelerationRateFast;
+    [self addSubview:self.scrollview];
+    
+    // Default property values
+    self.spacing = kDefaultSpacing;
+    self.minSizeScale = kDefaultMinSizeScale;
+    self.sizeScaleRatio = kDefaultSizeScaleRatio;
+    self.minAlphaScale = kDefaultMinAlphaScale;
+    self.alphaScaleRatio = kDefaultAlphaScaleRatio;
+    self.shouldUpdateRenderingOnlyWhenSelected = NO;
+    self.shouldSelect = YES;
+    
+    previousIndex = -1;
 }
 
-final class SkyHourWheelView: UIView, DMPickerViewDelegate, DMPickerViewDatasource {
-    
-    // MARK: - Outlets
-    @IBOutlet weak var pickerView: DMPickerView!
-    
-    // MARK: - Private vars
-    var skyhourWheelDelegate: SkyHourWheelDelegate!
-    let pickerOrientation: PickerScrollOrientation = .OrientationDown //this is the default value
+- (id)init
+{
+    self = [super init];
+    if (self) {
+        [self initialize];
+    }
+    return self;
+}
 
-    // MARK: - Lifecycle
-    
-    override func awakeFromNib() {
-        super.awakeFromNib()
-        setupViews()
+- (id)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (self) {
+        [self initialize];
     }
-    
-    override func drawRect(rect: CGRect) {
-        super.drawRect(rect)
-        if pickerOrientation == .OrientationDown { movePickerToIndex(99, animated: false)}
+    return self;
+}
+
+- (id)initWithCoder:(NSCoder *)aDecoder {
+    if ((self = [super initWithCoder:aDecoder])) {
+        [self initialize];
     }
+    return self;
+}
+
+#pragma mark - Dealloc
+
+- (void)dealloc {
+    self.scrollview.delegate = nil;
+    self.scrollview = nil;
+}
+
+#pragma mark - Getter
+
+- (NSUInteger)currentIndex {
+    return self.index;
+}
+
+#pragma mark - Layout
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
     
-    // MARK: - Setup
+    // Scrollview
+    self.scrollview.frame = self.bounds;
     
-    func setupViews() {
-        backgroundColor = UIColor.clearColor()
+    // Check if not empty frame
+    if (CGRectGetWidth(self.bounds) <= 0 || CGRectGetHeight(self.bounds) <= 0) return;
+    
+    // Labels
+    CGFloat currentX = CGRectGetWidth(self.bounds) / 2;
+    CGFloat currentY = CGRectGetHeight(self.bounds) / 2;
+    for (int i = 0 ; i < [self.labels count] ; i++) {
+        UILabel *label = self.labels[i];
+        [label sizeToFit];
         
-        // Vertical picker
-        pickerView.datasource = self
-        pickerView.delegate = self
-        pickerView.spacing = -50.0
-        pickerView.minSizeScale = 0.2
-        pickerView.sizeScaleRatio = 1.0
-        pickerView.minAlphaScale = 0.2
-        pickerView.alphaScaleRatio = 1.0
-        pickerView.shouldUpdateRenderingOnlyWhenSelected = false
-        pickerView.reloadData()
-    }
-    
-    // MARK: - DMPickerview
-    
-    @objc(numberOfLabelsForPickerView:) func numberOfLabelsForPickerView(pickerView: DMPickerView!) -> UInt {
-        return 100
-    }
-
-    @objc(valueLabelForPickerView:AtIndex:) func valueLabelForPickerView(pickerView: DMPickerView!, atIndex index: UInt) -> String! {
-        if pickerOrientation == .OrientationUp { return ("\(index)")}
-        else { return ("\(99-index)")}
-    }
-    
-    @objc(fontForLabelsForPickerView:AtIndex:) func fontForLabelsForPickerView(pickerView: DMPickerView!, atIndex index: UInt) -> UIFont! {
-        var font = UIFont(name: "HelveticaNeue-Bold", size: 150.0)
-        var index = index
+        /* QUICK FIX FOR LABEL FRAME HEIGHT */
+        CGFloat labelHeight = 0.0;
+        if ([self.datasource respondsToSelector:@selector(heightForLabelsForPickerView:)]) {
+            labelHeight = [self.datasource heightForLabelsForPickerView:self];
+        }
         
-        if pickerOrientation == .OrientationDown {
-            index = (99-index)
+        label.frame = CGRectMake(CGRectGetMidX(self.bounds) - CGRectGetWidth(label.frame) / 2,
+                                 currentY,
+                                 CGRectGetWidth(label.frame),
+                                 labelHeight);
+        currentY += CGRectGetHeight(label.frame) + self.spacing;
+    }
+    
+    // Update offset according to selected index
+    if ([self.labels count] > 0) {
+        UILabel *label = self.labels[self.index];
+        CGPoint newContentOffset = CGPointMake(CGRectGetMinX(self.bounds), CGRectGetMidY(label.frame) - CGRectGetMidY(self.scrollview.frame));
+        if (CGRectGetHeight(self.scrollview.frame) > 0) {
+            [self.scrollview setContentOffset:newContentOffset animated:NO];
         }
-        if index > 9 {
-            font = UIFont(name: "HelveticaNeue-Bold", size: 140.0)
+    }
+    
+    // Update scrollview contentsize
+    self.scrollview.contentSize = CGSizeMake(CGRectGetWidth(self.bounds), currentY + CGRectGetHeight(self.scrollview.bounds) / 2);
+    
+    // Update alpha and scaling of labels
+    [self updateViews];
+}
+
+#pragma mark - Reload data
+
+- (void)reloadData {
+    
+    // Remove all scrollview's subviews
+    for (UIView *subView in [self.scrollview subviews]) {
+        [subView removeFromSuperview];
+    }
+    
+    // Reinit array
+    self.labels = [NSMutableArray array];
+    
+    // Get texts from datasource
+    NSUInteger n = [self.datasource numberOfLabelsForPickerView:self];
+    NSMutableArray *texts = [NSMutableArray array];
+    for (int i = 0 ; i < n ; i++) {
+        [texts addObject:[self.datasource valueLabelForPickerView:self AtIndex:i]];
+    }
+    
+    // Set font
+    UIFont *font = [UIFont fontWithName:@"Helvetica" size:30];
+    
+    // Set color
+    UIColor *textColor = [UIColor whiteColor];
+    if ([self.datasource respondsToSelector:@selector(textColorForLabelsForPickerView:)]) {
+        textColor = [self.datasource textColorForLabelsForPickerView:self];
+    }
+    
+    for (int i = 0 ; i < [texts count] ; i++) {
+        if ([self.datasource respondsToSelector:@selector(fontForLabelsForPickerView:AtIndex:)]) {
+            font = [self.datasource fontForLabelsForPickerView:self AtIndex:i];
         }
-        return font
+        // Create and customize label
+        UILabel *label = [UILabel new];
+        label.font = font;
+        label.textColor = textColor;
+        label.text = texts[i];
+        label.tag = i;
+        [label sizeToFit];
+        // Gesture recognizer
+        //UITapGestureRecognizer *tapGestureRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(didTapLabel:)];
+        //[label addGestureRecognizer:tapGestureRecognizer];
+        //label.userInteractionEnabled = YES;
+        // Add subview
+        [self.scrollview addSubview:label];
+        // Add label to property array
+        [self.labels addObject:label];
     }
     
-    @objc(textColorForLabelsForPickerView:) func textColorForLabelsForPickerView(pickerView: DMPickerView!) -> UIColor! {
-        return UIColor.whiteColor()
+    // Reload layouts
+    [self setNeedsLayout];
+    [self layoutIfNeeded];
+    
+}
+
+#pragma mark - Scrollview delegate
+
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView {
+    if (!self.shouldUpdateRenderingOnlyWhenSelected) [self updateViews];
+}
+
+- (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate {
+    if (!decelerate) [self scrollToNearestNeighbour];
+}
+
+- (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView {
+    [self scrollToNearestNeighbour];
+}
+
+- (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView {
+    
+    // Notify delegate
+    if (self.delegate && [self.delegate respondsToSelector:@selector(pickerView:didSelectLabelAtIndex:userTriggered:)]) {
+        [self.delegate pickerView:self didSelectLabelAtIndex:self.index userTriggered:YES];
+        AudioServicesPlaySystemSound(1105);
     }
     
-     @objc(pickerView:didSelectLabelAtIndex:userTriggered:) func pickerView(pickerView: DMPickerView!, didSelectLabelAtIndex index: UInt, userTriggered: Bool) {
-        if pickerOrientation == .OrientationUp { skyhourWheelDelegate.didSelectValue(index)}
-        else { skyhourWheelDelegate.didSelectValue(99-index)}
-    }
-    
-    @objc(heightForLabelsForPickerView:) func heightForLabelsForPickerView(pickerView: DMPickerView!) -> CGFloat {
-        return 170.0
-    }
-    
-    func movePickerToIndex(index: UInt, animated: Bool) {
-        self.pickerView.moveToIndex(index, animated: animated)
-    }
-    
-    func movePickerToFirstHour() {
-        if pickerOrientation == .OrientationUp { self.pickerView.moveToIndex(1, animated: true)}
-        else { self.pickerView.moveToIndex(98, animated: true)}
+    // Update views if the option was selected
+    if (self.shouldUpdateRenderingOnlyWhenSelected) {
+        [self updateViews];
     }
 }
+
+#pragma mark - Scroll to neearest neighbour
+
+/**
+ Scroll to the nearest neighbour
+ */
+- (void)scrollToNearestNeighbour {
+    
+    CGPoint position = self.scrollview.contentOffset;
+    // Compute the offset of the middle of the visible scroller
+    CGFloat middlePosition = position.y + CGRectGetHeight(self.scrollview.bounds) / 2;
+    
+    // Find nearest label
+    CGFloat minDistance = MAX(self.scrollview.contentSize.width, self.scrollview.contentSize.height);
+    UILabel *nearsetLabel = nil;
+    NSUInteger index = -1;
+    for (int i = 0 ; i < [self.labels count] ; i++) {
+        UILabel *label = self.labels[i];
+        // Calculate distance from middle
+        CGFloat distanceFromMiddle = CGRectGetMidY(label.frame) - middlePosition;
+        if (ABS(distanceFromMiddle) < ABS(minDistance)) {
+            minDistance = distanceFromMiddle;
+            nearsetLabel = label;
+            index = i;
+        }
+    }
+    
+    // Move scroll
+    CGPoint newContentOffset = CGPointMake(CGRectGetMinX(self.bounds), self.scrollview.contentOffset.y + minDistance);
+    [self.scrollview setContentOffset:newContentOffset animated:YES];
+    
+    // Update index
+    self.index = index;
+    
+}
+
+#pragma mark - Tap label
+
+- (void)didTapLabel:(UITapGestureRecognizer *)recognizer {
+    //NSUInteger index = recognizer.view.tag;
+    //[self moveToIndex:index animated:YES];
+}
+
+#pragma mark - Move to index
+
+/**
+ Move to index
+ */
+- (void)moveToIndex:(NSUInteger)index animated:(BOOL)animated {
+    UILabel *label = self.labels[index];
+    
+    CGPoint newContentOffset = CGPointMake(CGRectGetMinX(self.bounds), CGRectGetMidY(label.frame) - CGRectGetMidY(self.scrollview.frame));
+    if (newContentOffset.y < self.scrollview.contentSize.height && CGRectGetHeight(self.scrollview.frame) > 0) {
+        [self.scrollview setContentOffset:newContentOffset animated:animated];
+    }
+    
+    // Notify delegate
+    self.index = index;
+    if (self.delegate && [self.delegate respondsToSelector:@selector(pickerView:didSelectLabelAtIndex:userTriggered:)]) {
+        [self.delegate pickerView:self didSelectLabelAtIndex:self.index userTriggered:animated];
+    }
+}
+
+#pragma mark - Update views
+
+/**
+ Change scaling and alpha of labels depending on their distance to the center
+ */
+- (void)updateViews {
+    CGPoint position = self.scrollview.contentOffset;
+    
+    // Compute the offset of the middle of the visible scroller
+    CGFloat middlePosition = position.y + CGRectGetHeight(self.scrollview.bounds) / 2;
+    
+    // Transform
+    for (UILabel *label in self.labels) {
+        // Calculate distance from middle
+        CGFloat distanceFromMiddle = ABS(CGRectGetMidY(label.frame) - middlePosition);
+        
+        // Scale according to this distance
+        CGFloat sizeScale = MAX(1 - self.sizeScaleRatio * distanceFromMiddle/CGRectGetHeight(self.scrollview.bounds), self.minSizeScale);
+        label.transform = CGAffineTransformScale(CGAffineTransformIdentity, sizeScale, sizeScale);
+        
+        // Change alpha according to distance
+        //CGFloat alphaScale = MAX(1 - self.alphaScaleRatio * distanceFromMiddle/CGRectGetHeight(self.scrollview.bounds), self.minAlphaScale);
+        //label.alpha = self.shouldSelect ? alphaScale : self.minAlphaScale;
+        
+        CGFloat alphaScale;
+        if ((distanceFromMiddle) > (CGRectGetHeight(self.scrollview.bounds) / 2)) {
+            alphaScale = 0.0;
+        } else {
+            alphaScale = 1 - ((distanceFromMiddle)/((CGRectGetHeight(self.scrollview.bounds) / 2) - 10.0));
+        }
+        label.alpha = alphaScale;
+    }
+    
+    NSInteger currentIndex = [self findMiddleIndex];
+    if (currentIndex != previousIndex) {
+        AudioServicesPlaySystemSound(1105);
+        previousIndex = currentIndex;
+    }
+}
+
+- (NSInteger)findMiddleIndex {
+    CGPoint position = self.scrollview.contentOffset;
+    // Compute the offset of the middle of the visible scroller
+    CGFloat middlePosition = position.y + CGRectGetHeight(self.scrollview.bounds) / 2;
+    
+    // Find nearest label
+    CGFloat minDistance = MAX(self.scrollview.contentSize.width, self.scrollview.contentSize.height);
+    NSUInteger index = -1;
+    for (int i = 0 ; i < [self.labels count] ; i++) {
+        UILabel *label = self.labels[i];
+        // Calculate distance from middle
+        CGFloat distanceFromMiddle = CGRectGetMidY(label.frame) - middlePosition;
+        if (ABS(distanceFromMiddle) < ABS(minDistance)) {
+            minDistance = distanceFromMiddle;
+            index = i;
+        }
+    }
+    return index;
+}
+
+@end
