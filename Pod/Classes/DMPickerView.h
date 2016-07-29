@@ -8,20 +8,11 @@
 
 #import <UIKit/UIKit.h>
 
-typedef enum {
-    HORIZONTAL,
-    VERTICAL
-} Orientation;
-
 @protocol DMPickerViewDatasource, DMPickerViewDelegate;
 
 @interface DMPickerView : UIView<UIScrollViewDelegate>
 
 // Customizable values
-/**
- Orientation of the picker (vertical by default)
- */
-@property (nonatomic) Orientation orientation;
 /**
  Spacing between the elements. Default is 30.
  */
@@ -97,13 +88,17 @@ typedef enum {
 /**
  Font for the labels
  */
-- (UIFont *)fontForLabelsForPickerView:(DMPickerView *)pickerView;
+- (UIFont *)fontForLabelsForPickerView:(DMPickerView *)pickerView AtIndex:(NSUInteger)index;
 
 /**
  Text color for the labels
  */
 - (UIColor *)textColorForLabelsForPickerView:(DMPickerView *)pickerView;
 
+/**
+ Height for the labels
+ */
+- (CGFloat)heightForLabelsForPickerView:(DMPickerView *)pickerView;
 
 @end
 
@@ -115,6 +110,5 @@ typedef enum {
  @param userTriggered The selection is triggered by the user
  */
 - (void)pickerView:(DMPickerView *)pickerView didSelectLabelAtIndex:(NSUInteger)index userTriggered:(BOOL)userTriggered;
-- (void)didTapPicker:(DMPickerView *)pickerView;
 
 @end
