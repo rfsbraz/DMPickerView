@@ -321,6 +321,11 @@
     }
     
     NSInteger currentIndex = [self findMiddleIndex];
+
+    if (self.delegate && [self.delegate respondsToSelector:@selector(pickerView:closestIndex:previousIndex:)]) {
+        [self.delegate pickerView:self closestIndex:currentIndex previousIndex:previousIndex];
+    }
+    
     if (currentIndex != previousIndex) {
         AudioServicesPlaySystemSound(1105);
         previousIndex = currentIndex;

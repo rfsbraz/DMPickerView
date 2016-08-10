@@ -110,5 +110,6 @@
  @param userTriggered The selection is triggered by the user
  */
 - (void)pickerView:(DMPickerView *)pickerView didSelectLabelAtIndex:(NSUInteger)index userTriggered:(BOOL)userTriggered;
+- (void)pickerView:(DMPickerView *)pickerView closestIndex:(NSInteger)index previousIndex:(NSInteger)previousIndex;
 
 @end
